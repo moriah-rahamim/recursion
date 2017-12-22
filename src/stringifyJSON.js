@@ -17,6 +17,10 @@ var stringifyJSON = function(obj) {
   if (type === 'string') {
     return '"' + obj + '"';
   }
+  // date
+  if (obj instanceof Date) {
+    return '"' + String(obj) + '"';
+  }
   // number, boolean
   if (type === 'number' || type === 'boolean') {
     return String(obj);
@@ -33,9 +37,9 @@ var stringifyJSON = function(obj) {
   
   // Array
   // NOTE: For arrays, JSON.stringify does NOT include all enumerable properties.
-  // It only includes indexed properties starting at 0.
+  // It only includes indexed properties from 0 through the length of the array.
   if (Array.isArray(obj)) {
-    let pieces = [];
+    let items = [];
 
     for (let i = 0; i < obj.length; i++) {
       let item = obj[i];
@@ -44,19 +48,34 @@ var stringifyJSON = function(obj) {
       // undefined, a function, or a symbol is censored to null when found in an array.
       // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify#Description
       if (item === undefined || itemType  === 'function' || itemType === 'symbol') {
-        pieces.push(stringifyJSON(null));
+        items.push(stringifyJSON(null));
       } else {
-        pieces.push(stringifyJSON(item));
+        items.push(stringifyJSON(item));
       }
     }
 
-    return '[' + pieces.join(',') + ']';
+    return '[' + items.join(',') + ']';
   }
 
   // Object
+  // NOTE: For objects, we do include all enumerable properties
   if (type === 'object' ) {
-    // placeholder
-    return '{}';
+    let pairs = [];
+
+    for (let key in obj) {
+      // All symbol-keyed properties will be completely ignored [MDN]
+      if(typeof key !== 'symbol') {
+        let item = obj[key];
+        let itemType = typeof item;
+
+        // undefined, a function, or a symbol is omitted when found in a non-array object.
+        if(item !== undefined && itemType !== 'function' && itemType !== 'symbol') {
+          pairs.push(stringifyJSON(key) + ':' + stringifyJSON(item));
+        }
+      }
+    }
+
+    return '{' + pairs.join(',') + '}';
   }
 
   // If it doesn't match any of the above types, then who the hell knows what this is
